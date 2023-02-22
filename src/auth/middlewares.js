@@ -46,11 +46,12 @@ async function addUser(req, res, next) {
       password: hashedPassword,
     },
   });
+  req.userId = newUser.id;
   next();
 }
 
 function createToken(req, res, next) {
-  const username = req.body.username;
+  const { username } = req.body;
   const payload = { username };
   const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
     expiresIn: "10m",
@@ -60,16 +61,39 @@ function createToken(req, res, next) {
   next();
 }
 
+async function storeToken(req, res, next) {
+  const { username, accessToken } = req;
+  await redisConnection.set(
+    username,
+    JSON.stringify({ accessToken }),
+    (err) => {
+      if (err) return res.sendStatus(500);
+    }
+  );
+  next();
+}
+
+async function deleteToken(req, res, next) {
+  const {
+    user: { username },
+  } = req;
+  redisConnection.del(username, (err, reply) => {
+    if (err) return res.sendStatus(500);
+  });
+  next();
+}
+
 async function verifyToken(req, res, next) {
-  const { username } = req.params;
+  const {
+    user: { username },
+  } = req;
+
   const tokenHeader = req.headers.authorization;
   const token = tokenHeader && tokenHeader.split(" ")[1];
-  if (!token) res.sendStatus(401);
+  if (!token) return res.sendStatus(401);
 
-  await redisConnection.get(username, (err, reply) => {
-    if (err) return res.sendStatus(500);
-    if (reply == null) return res.sendStatus(403);
-  });
+  const reply = await redisConnection.get(username);
+  if (reply == null) return res.status(403).send("login required");
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) return res.sendStatus(403);
@@ -79,4 +103,24 @@ async function verifyToken(req, res, next) {
   next();
 }
 
-export { isUser, addUser, createToken, verifyToken };
+async function findUserById(req, res, next) {
+  const { userId } = req.params;
+  const user = await prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+  });
+  if (!user) return res.status(400).send("No user found");
+  req.user = user;
+  next();
+}
+
+export {
+  isUser,
+  addUser,
+  createToken,
+  storeToken,
+  verifyToken,
+  findUserById,
+  deleteToken,
+};

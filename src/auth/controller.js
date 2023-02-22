@@ -1,23 +1,18 @@
-import { redisConnection } from "../db/redis.js";
+function loginController(req, res) {
+  const { userId, accessToken } = req;
+  return res.send({ userId, accessToken });
+}
 
-async function loginController(req, res) {
-  const { username, accessToken } = req;
-  await redisConnection.set(
-    username,
-    JSON.stringify({ accessToken }),
-    (err) => {
-      if (err) return res.sendStatus(500);
-    }
-  );
-  res.send({ accessToken });
+async function detailsController(req, res) {
+  const {
+    user: { name, username },
+  } = req;
+
+  return res.json({ name, username });
 }
 
 function logoutController(req, res) {
-  const { username } = req;
-  redisConnection.del(username, (err, reply) => {
-    if (err) return res.sendStatus(500);
-  });
-  res.redirect("/");
+  return res.redirect("/");
 }
 
-export { loginController, logoutController };
+export { loginController, detailsController, logoutController };

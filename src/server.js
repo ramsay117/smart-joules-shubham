@@ -19,7 +19,7 @@ try {
 app.use("/api", router);
 
 app.get("/", (req, res) => {
-  res.send("landing page");
+  return res.send("landing page");
 });
 
 const PORT = process.env.PORT || 3001;
