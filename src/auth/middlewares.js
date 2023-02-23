@@ -21,6 +21,7 @@ async function isUser(req, res, next) {
   if (!isMatch) {
     return res.status(400).json({ message: "incorrect password" });
   }
+  req.userId = user.id;
   next();
 }
 
@@ -33,6 +34,7 @@ async function addUser(req, res, next) {
     },
   });
   if (user) {
+    req.userId = user.id;
     return res.status(400).json({ message: "User already exists" });
   }
 
@@ -90,7 +92,7 @@ async function verifyToken(req, res, next) {
 
   const tokenHeader = req.headers.authorization;
   const token = tokenHeader && tokenHeader.split(" ")[1];
-  if (!token) return res.sendStatus(401);
+  if (!token) return res.status(401).send("token missing");
 
   const reply = await redisConnection.get(username);
   if (reply == null) return res.status(403).send("login required");
